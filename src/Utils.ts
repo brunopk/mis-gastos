@@ -1,48 +1,43 @@
-function getColumnForCategory(category) {
-  switch (category) {
-    case "Celular":
-      return 2
-    case "Comida":
-      return 3
-    case "Psicólogo":
-      return 4
-    case "Salud":
-      return 5
-    case "Transporte":
-      return 6
-    case "Otros":
-      return 7
-    default:
-      throw new Error(`Unknown category '${category}'`)
-  }
+function getCategoryConfiguration(categoryName: string): CategoryConfig {
+  const categoryConfig = Object.keys(categories)
+    .filter((key) => categories[key].name === categoryName)
+    .map((key) => categories[key])
+    .at(0)
+  if (typeof categoryConfig === "undefined") throw new Error(`Unknown category "${categoryName}"`)
+  return categoryConfig
+}
+
+function getSubcategoryConfiguration(categoryConfig: CategoryConfig, subCategoryName: string) {
+  if (typeof categoryConfig.subCategories === "undefined")
+    throw new Error(`No sub categories defined for category "${categoryConfig.name}"`)
+  const subcategoryConfig = Object.keys(categoryConfig.subCategories)
+    .filter(
+      (key) =>
+        typeof categoryConfig.subCategories !== "undefined" &&
+        typeof categoryConfig.subCategories[key].name === subCategoryName
+    )
+    .map((key) => categories[key])
+    .at(0)
+  if (typeof subcategoryConfig === "undefined") throw new Error(`Unknown sub category "${subCategoryName}"`)
+  return categoryConfig
+}
+
+function getColumnForCategory(categoryName: string) {
+  const categoryConfig = getCategoryConfiguration(categoryName)
+  return categoryConfig.column
 }
 
 function getColumnForSubcategory(category: string, subCategory: string, discountApplied: boolean): number {
   const errorMessage = "Cannot obtain column for category '%C' and subcategory '%S'"
   switch (category) {
-    case CATEGORIES.CATEGORY_1.NAME:
+    case categories.category_1.name:
+      // TODO: it should not depend on an extra param (discountApplied) there should be two subcategories to represent wether discount was applied or not
       return discountApplied ? 2 : 3
-    case CATEGORIES.CATEGORY_2.NAME:
-      switch (subCategory) {
-        case "Bus":
-          return 2
-        case "Nafta":
-          return 3
-        case "Taxi":
-          return 4
-        case "Uber":
-          return 5
-        default:
-          throw new Error(errorMessage.replace("C", category).replace("S", subCategory))
-      }
+    case categories.category_2.name:
+      return getSubcategoryConfiguration(getCategoryConfiguration(category), subCategory).column
     default:
       throw new Error(errorMessage.replace("%C", category).replace("%S", subCategory))
   }
-}
-
-function getColumnForTotal(): number {
-  // month column + categories  + 1
-  return getNumberOfCategories() + 2
 }
 
 function getNumberOfSubcategoriesColumns(category: string): number {
@@ -57,25 +52,7 @@ function getNumberOfSubcategoriesColumns(category: string): number {
 }
 
 function getNumberOfCategories(): number {
-  return 6
-}
-
-function getNumberOfExtraColumns(): number {
-  // total column
-  return 1
-}
-
-function getRowForCurrentMonth(spreadSheetId: string, sheetName: string, date: Date): number {
-  let rowForCurrentMonth
-  const data = readAllRows(spreadSheetId, sheetName)?.slice(1)
-  for (let i = 0; i < data.length; i++) {
-    if (data[i][0].getMonth() == date.getMonth()) {
-      // 1 (because of header row) + 1 (because first row index is 1)
-      rowForCurrentMonth = i + 2
-      break
-    }
-  }
-  return rowForCurrentMonth
+  return Object.keys(categories).length
 }
 
 function getTotalColumnForCategorySheet(sheetName: string) {
@@ -102,49 +79,11 @@ function updateSheet(
   description: string
 ) {
   const rowForCurrentMonth = getRowForCurrentMonth(spreadSheetId, sheetName, date)
-  const updatingSheetLogMessage = "Updating sheet 'X' on spreadsheet 'Y' ..."
 
   if (spreadSheetId === SPREADSHEETS.MAIN.ID) {
-    console.info(updatingSheetLogMessage.replace("X", sheetName).replace("Y", spreadSheetId))
-    const newRow = [new Date(), date, formName, category, subcategory, description, account, discountApplied, value]
-    addRow(spreadSheetId, sheetName, newRow)
   } else if (spreadSheetId === SPREADSHEETS.MONTHLY.ID) {
     if (sheetName === SPREADSHEETS.MONTHLY.CATEGORIES_MAIN_SHEET) {
-      console.info(updatingSheetLogMessage.replace("X", sheetName).replace("Y", spreadSheetId))
-      if (!rowForCurrentMonth) {
-        const newRowAux = Array(getNumberOfCategories() + getNumberOfExtraColumns()).fill(0)
-        const newRow: (Date | number)[] = [date].concat(newRowAux)
-        newRow[getColumnForCategory(category) - 1] = value
-        newRow[getColumnForTotal() - 1] = value
-
-        addRow(spreadSheetId, sheetName, newRow)
-      } else {
-        const columnForCategory = getColumnForCategory(category)
-        const currentCategoryAmount = getValue(spreadSheetId, sheetName, rowForCurrentMonth, columnForCategory)
-        setValue(spreadSheetId, sheetName, rowForCurrentMonth, columnForCategory, currentCategoryAmount + value)
-
-        const columnForTotalSpend = getColumnForTotal()
-        const currentTotal = getValue(spreadSheetId, sheetName, rowForCurrentMonth, columnForTotalSpend)
-        setValue(spreadSheetId, sheetName, rowForCurrentMonth, columnForTotalSpend, currentTotal + value)
-      }
     } else if (SPREADSHEETS.MONTHLY.ACCOUNT_SHEETS.indexOf(sheetName) !== -1) {
-      console.info(updatingSheetLogMessage.replace("X", sheetName).replace("Y", spreadSheetId))
-      if (!rowForCurrentMonth) {
-        const newRowAux = Array(getNumberOfCategories() + 1).fill(0)
-        const newRow: (Date | number)[] = [date].concat(newRowAux)
-        newRow[getColumnForCategory(category) - 1] = value
-        newRow[newRow.length - 1] = value
-
-        addRow(spreadSheetId, sheetName, newRow)
-      } else {
-        const columnForCategory = getColumnForCategory(category)
-        const currentCategoryAmount = getValue(spreadSheetId, sheetName, rowForCurrentMonth, columnForCategory)
-        setValue(spreadSheetId, sheetName, rowForCurrentMonth, columnForCategory, currentCategoryAmount + value)
-
-        const totalColum = getColumnForTotal()
-        const currentTotal = getValue(spreadSheetId, sheetName, rowForCurrentMonth, totalColum)
-        setValue(spreadSheetId, sheetName, rowForCurrentMonth, totalColum, currentTotal + value)
-      }
     } else if (SPREADSHEETS.MONTHLY.CATEGORIES_SHEET.indexOf(sheetName) !== -1) {
       console.info(updatingSheetLogMessage.replace("X", sheetName).replace("Y", spreadSheetId))
       const subcategoryColumn = getColumnForSubcategory(category, subcategory, discountApplied)

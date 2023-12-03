@@ -1,3 +1,8 @@
+enum MONTHLY_SHEET_TYPES {
+  CATEGORY,
+  ACCOUNT
+}
+
 const FORMS = {
   MAIN: {
     NAME: "Principal",
@@ -13,33 +18,6 @@ const FORMS = {
   }
 }
 
-const CATEGORIES = {
-  CATEGORY_1: {
-    NAME: "Comida"
-  },
-  CATEGORY_2: {
-    NAME: "Transporte",
-    SUBCATEGORIES: {
-      SUBCATEGORY_1: "Bus",
-      SUBCATEGORY_2: "Nafta",
-      SUBCATEGORY_3: "Taxi",
-      SUBCATEGORY_4: "Uber"
-    }
-  },
-  CATEGORY_3: {
-    NAME: "Psicólogo"
-  },
-  CATEGORY_4: {
-    NAME: "Celular"
-  },
-  CATEGORY_5: {
-    NAME: "Otros"
-  },
-  CATEGORY_6: {
-    NAME: "Salud"
-  }
-}
-
 const ACCOUNTS = {
   ACCOUNT_1: "Itaú",
   ACCOUNT_2: "BROU",
@@ -47,20 +25,6 @@ const ACCOUNTS = {
   ACCOUNT_4: "Itaú Alimentos"
 }
 
-const SPREADSHEETS = {
-  MAIN: {
-    ID: "1r93R3hKOCV6St4sac_88YZRM6OuYO9LxaxwMa2gWomE",
-    SHEETS: {
-      MAIN: "Principal"
-    }
-  },
-  MONTHLY: {
-    ID: "1nE0j6lgMZdimaLtO_31OKIpzVNNGBkVGB_xiPeAHoOw",
-    ACCOUNT_SHEETS: [ACCOUNTS.ACCOUNT_1, ACCOUNTS.ACCOUNT_2, ACCOUNTS.ACCOUNT_3],
-    CATEGORIES_SHEET: [CATEGORIES.CATEGORY_1.NAME, CATEGORIES.CATEGORY_2.NAME],
-    CATEGORIES_MAIN_SHEET: "Categorías"
-  }
-}
 
 const YES = "Si"
 

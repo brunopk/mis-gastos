@@ -1,3 +1,5 @@
+const spreadSheetHandlers: BaseSpreadSheetHandler[] = []
+
 function processMainForm() {
   const range = SpreadsheetApp.getActiveRange()
   const numRows = range.getNumRows()
@@ -17,6 +19,15 @@ function processMainForm() {
     } else {
       discountApplied = false
     }
+
+    const newSpend: Spend = { date, category, value, account, description, subCategory, discountApplied }
+    console.info(`Adding new spend: ${newSpend} ...`)
+
+    SPREADSHEET_HANDLERS.forEach((handler) => {
+      handler.processSpend(newSpend)
+    })
+
+    // TODO: From this line and on, code will change
 
     updateSheet(
       SPREADSHEETS.MAIN.ID,
