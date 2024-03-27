@@ -7,9 +7,10 @@ function readAllRows(spreadSheetId: string, sheetName: string): any[][] | undefi
 
 function addRow(spreadSheetId: string, sheetName: string, row: any[]) {
   const spreadSheet = SpreadsheetApp.openById(spreadSheetId)
+  const spreadSheetName = spreadSheet.getName()
   const sheet = spreadSheet.getSheetByName(sheetName)
-  console.log(`Adding new row on sheet "${sheetName}"`)
   sheet?.appendRow(row)
+  console.info(`New row added on sheet "${sheetName}" of "${spreadSheetName}"`)
 }
 
 function getValue(spreadSheetId: string, sheetName: string, row: number, column: number): any {
@@ -20,6 +21,7 @@ function getValue(spreadSheetId: string, sheetName: string, row: number, column:
 }
 
 function setValue(spreadSheetId: string, sheetName: string, row: number, column: number, newValue: any) {
+  console.info(`Updating cell on row ${row} and column ${column} of sheet "${sheetName}"`)
   const spreadSheet = SpreadsheetApp.openById(spreadSheetId)
   const sheet = spreadSheet.getSheetByName(sheetName)
   const dataRange = sheet?.getDataRange()

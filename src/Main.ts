@@ -1,149 +1,57 @@
+// TODO: Probar ingresar un gasto desde el formulario
+
+// TODO: Probar validar todas las planillas
+
+// TODO: Arreglar lo de las categorias (ver el TODO en src/Utils.ts:23)
+const spreadSheetHandlers: BaseSpreadSheetHandler[] = []
+
 function processMainForm() {
   const range = SpreadsheetApp.getActiveRange()
   const numRows = range.getNumRows()
+  const origin = "Forms"
 
   // Normally active range contains one row (last inserted row)
   for (let i = 1; i <= numRows; i++) {
-    const date = range.getCell(i, FORMS.MAIN.COLUMNS.DATE).getValue()
-    const category = range.getCell(i, FORMS.MAIN.COLUMNS.CATEGORY).getValue()
-    const value = range.getCell(i, FORMS.MAIN.COLUMNS.VALUE).getValue()
-    const account = range.getCell(i, FORMS.MAIN.COLUMNS.ACCOUNT).getValue()
-    const description = range.getCell(i, FORMS.MAIN.COLUMNS.DESCRIPTION).getValue()
-    const subCategory = range.getCell(i, FORMS.MAIN.COLUMNS.SUBCATEGORY).getValue()
-    let discountApplied = range.getCell(i, FORMS.MAIN.COLUMNS.DISCOUNT_APPLIED).getValue()
+    const date = range.getCell(i, forms.main.spreadSheet.sheet.extra.dateColumn).getValue()
+    const category = range.getCell(i, forms.main.spreadSheet.sheet.extra.categoryColumn).getValue()
+    const value = range.getCell(i, forms.main.spreadSheet.sheet.extra.valueColumn).getValue()
+    const account = range.getCell(i, forms.main.spreadSheet.sheet.extra.accountColumn).getValue()
+    const description = range.getCell(i, forms.main.spreadSheet.sheet.extra.descriptionColumn).getValue()
+    const subCategory = range.getCell(i, forms.main.spreadSheet.sheet.extra.subCategoryColumn).getValue()
 
-    if (discountApplied === YES) {
-      discountApplied = true
-    } else {
-      discountApplied = false
-    }
+    const newSpend: Spend = { date, category, value, account, description, subCategory, origin }
 
-    updateSheet(
-      SPREADSHEETS.MAIN.ID,
-      SPREADSHEETS.MAIN.SHEETS.MAIN,
-      FORMS.MAIN.NAME,
-      date,
-      value,
-      account,
-      discountApplied,
-      category,
-      subCategory,
-      description
-    )
-
-    updateSheet(
-      SPREADSHEETS.MONTHLY.ID,
-      SPREADSHEETS.MONTHLY.CATEGORIES_MAIN_SHEET,
-      FORMS.MAIN.NAME,
-      date,
-      value,
-      account,
-      discountApplied,
-      category,
-      subCategory,
-      description
-    )
-
-    if (SPREADSHEETS.MONTHLY.ACCOUNT_SHEETS.indexOf(account) !== -1) {
-      updateSheet(
-        SPREADSHEETS.MONTHLY.ID,
-        account,
-        FORMS.MAIN.NAME,
-        date,
-        value,
-        account,
-        discountApplied,
-        category,
-        subCategory,
-        description
-      )
-    }
-
-    if (SPREADSHEETS.MONTHLY.CATEGORIES_SHEET.indexOf(category) !== -1) {
-      updateSheet(
-        SPREADSHEETS.MONTHLY.ID,
-        category,
-        FORMS.MAIN.NAME,
-        date,
-        value,
-        account,
-        discountApplied,
-        category,
-        subCategory,
-        description
-      )
-    }
+    spreadSheetHandlers.forEach((handler) => {
+      handler.processSpend(newSpend)
+    })
   }
 }
 
 function processRecurrentSpends() {
   const today = new Date()
-  for (let i = 0; i < RECURRENT_SPENDS.length; i++) {
-    const currentSpend = RECURRENT_SPENDS[i]
-    if (today.getDate() == currentSpend.day) {
-      const taskDescription = TASK_DESCRIPTION_TEMPLATE.replace("X", currentSpend.name)
-        .replace("Y", currentSpend.account)
-        .replace("Z", formatDate(today))
-      const taskTitle = TASK_TITLE_TEMPLATE.replace("X", currentSpend.name)
-      createTask(TASKS_LIST, taskTitle, taskDescription, today)
-
-      const newRow = [
-        today,
-        today,
-        null,
-        currentSpend.category,
-        currentSpend.subCategory,
-        RECURRENT_SPEND_DESCRIPTION,
-        currentSpend.account,
-        false,
-        currentSpend.value
-      ]
-      addRow(SPREADSHEETS.MAIN.ID, SPREADSHEETS.MAIN.SHEETS.MAIN, newRow)
-
-      updateSheet(
-        SPREADSHEETS.MONTHLY.ID,
-        SPREADSHEETS.MONTHLY.CATEGORIES_MAIN_SHEET,
-        null,
-        today,
-        currentSpend.value,
-        currentSpend.account,
-        false,
-        currentSpend.category,
-        currentSpend.subCategory,
-        RECURRENT_SPEND_DESCRIPTION
-      )
-      updateSheet(
-        SPREADSHEETS.MONTHLY.ID,
-        currentSpend.account,
-        null,
-        today,
-        currentSpend.value,
-        currentSpend.account,
-        false,
-        currentSpend.category,
-        currentSpend.subCategory,
-        RECURRENT_SPEND_DESCRIPTION
-      )
-      if (SPREADSHEETS.MONTHLY.CATEGORIES_SHEET.indexOf(currentSpend.category) !== -1) {
-        updateSheet(
-          SPREADSHEETS.MONTHLY.ID,
-          currentSpend.category,
-          null,
-          today,
-          currentSpend.value,
-          currentSpend.account,
-          false,
-          currentSpend.category,
-          currentSpend.subCategory,
-          RECURRENT_SPEND_DESCRIPTION
-        )
-      }
-
-      console.info(`Sending mail to ${MAIL_RECIPIENT} ...`)
-      const mailBody = MAIL_BODY.replace("%S", currentSpend.name)
-        .replace("%A", currentSpend.account)
-        .replace("%D", formatDate(today))
-      MailApp.sendEmail(MAIL_RECIPIENT, "", MAIL_SUBJECT, mailBody)
+  for (let i = 0; i < recurrentSpends.length; i++) {
+    const recurrentSpend = recurrentSpends[i]
+    if (today.getDate() == recurrentSpend.dayOfMonth) {
+      createTask(recurrentSpendsTaskList, recurrentSpend.taskTitle, recurrentSpend.taskDescription, today)
+      spreadSheetHandlers.forEach((handler) => {
+        handler.processSpend(recurrentSpend)
+      })
+      console.info(`Sending mail to ${recurrentSpendsMailRecipient} ...`)
+      MailApp.sendEmail(recurrentSpendsMailRecipient, "", recurrentSpend.mailSubject, recurrentSpend.mailBody)
     }
   }
+}
+
+/**
+ * Validate all amounts in all spreadsheets for the current month.
+ * @param spreadSheetName .
+ */
+function validateAllSpreadSheets() {
+  spreadSheetHandlers.forEach((spreadSheetHandler) => {
+    try {
+      spreadSheetHandler.validate()
+    } catch (ex) {
+      console.error((ex as Error).stack)
+    }
+  })
 }
