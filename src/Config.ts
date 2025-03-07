@@ -35,11 +35,11 @@ const spreadSheets : { [name: string]: SpreadSheetConfig } = {
   main: {
     id: "1r93R3hKOCV6St4sac_88YZRM6OuYO9LxaxwMa2gWomE",
     name: "Principal",
-    class: "Main",
+    class: SpreadSheetClass.Main,
     sheets: {
       main: {
         name: "Principal",
-        class: "Main",
+        class: MainSheetClass.Main,
         columns: {
           category: 1,
           subCategory: 1,
@@ -51,7 +51,7 @@ const spreadSheets : { [name: string]: SpreadSheetConfig } = {
       },
       recurrentSpends: {
         name: "Recurrentes",
-        class: "Main",
+        class: MainSheetClass.Main,
         columns: {
           timestamp: 1,
           taskId: 1,
@@ -68,65 +68,67 @@ const spreadSheets : { [name: string]: SpreadSheetConfig } = {
   monthly: {
     id: "1nE0j6lgMZdimaLtO_31OKIpzVNNGBkVGB_xiPeAHoOw",
     name: "Mensual",
-    class: "Monthly",
+    class: SpreadSheetClass.Monthly,
     sheets: {
       all_categories: {
         name: "Categorías",
-        class: "AllCategories",
+        class: MonthlySheetClass.AllCategories,
         columns: {
           "Column A": 0,
           "Column B": 0,
-          "Total": 0
+          Total: 0
         }
       },
       category1: {
         name: "",
-        class: "Category",
+        class: MonthlySheetClass.Category,
         columns: {
           "Column A": 0,
           "Column B": 0,
-          "Total": 0
+          Total: 0
         }
       },
       category2: {
         name: "",
-        class: "Category",
+        class: MonthlySheetClass.Category,
         columns: {
           "Column A": 0,
           "Column B": 0,
-          "Total": 0
+          Total: 0
         }
       },
       account1: {
         name: "Account 1",
-        class: "Account",
+        class: MonthlySheetClass.Accounts,
         columns: {
           "Column A": 0,
           "Column B": 0,
-          "Total": 0
+          Total: 0
         }
       },
       account2: {
         name: "Account 2",
-        class: "Account",
+        class: MonthlySheetClass.Accounts,
         columns: {
           "Column A": 0,
           "Column B": 0,
-          "Total": 0
+          Total: 0
         }
       },
       account3: {
         name: "Account 3",
-        class: "Account",
+        class: MonthlySheetClass.Accounts,
         columns: {
           "Column A": 0,
           "Column B": 0,
-          "Total": 0
+          Total: 0
         }
       }
     }
   }
 }
+
+const defaultIncome = 10
 
 const recurrentSpendsMailRecipient = "asd@asd.com"
 

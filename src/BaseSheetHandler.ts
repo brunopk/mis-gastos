@@ -13,7 +13,7 @@ abstract class BaseSheetHandler {
   abstract validate(): void
 
   processReimbursement(reimbursement: Reimbursement): void {
-    if (this.spreadSheetConfig.class !== "Main") {
+    if (this.spreadSheetConfig.class !== SpreadSheetClass.Main) {
       const totalReimbursementColumn = getTotalReimbursementColumn(this.sheetConfig)
       const totalColumn = getTotalColumn(this.sheetConfig)
       const rowForMonth = this.getRowForMonth(reimbursement.date.getFullYear(), reimbursement.date.getMonth())
@@ -28,7 +28,7 @@ abstract class BaseSheetHandler {
 
           addRow(this.spreadSheetConfig.id, this.sheetConfig.name, newRow)
         } else {
-          setValue(this.spreadSheetConfig.id, this.sheetConfig.name, rowForMonth, 1, formatDate(reimbursement.date))
+          setValue(this.spreadSheetConfig.name, this.spreadSheetConfig.id, this.sheetConfig.name, rowForMonth, 1, formatDate(reimbursement.date))
 
           const currentTotalReimbursement = getValue(
             this.spreadSheetConfig.id,
@@ -37,6 +37,7 @@ abstract class BaseSheetHandler {
             totalReimbursementColumn
           )
           setValue(
+            this.spreadSheetConfig.name,
             this.spreadSheetConfig.id,
             this.sheetConfig.name,
             rowForMonth,
@@ -46,6 +47,7 @@ abstract class BaseSheetHandler {
 
           const currentTotal = getValue(this.spreadSheetConfig.id, this.sheetConfig.name, rowForMonth, totalColumn)
           setValue(
+            this.spreadSheetConfig.name,
             this.spreadSheetConfig.id,
             this.sheetConfig.name,
             rowForMonth,
@@ -55,7 +57,7 @@ abstract class BaseSheetHandler {
         }
       } else {
         console.info(
-          `No column for reimbursement defined for sheet "${this.sheetConfig.name}" of "${this.spreadSheetConfig.name}"`
+          `No reimbursement column configured for sheet "${this.sheetConfig.name}" of "${this.spreadSheetConfig.name}"`
         )
       }
     }
@@ -63,8 +65,9 @@ abstract class BaseSheetHandler {
 
   /**
    * Get the corresponding row for the given month.
-   * @param date date from 0 to 11
-   * @returns index of the row or undefined
+   * @param year as returned by `getFullYear` method of `Date`
+   * @param month as returned by `getMonth` method of `Date`
+   * @returns index of the row or undefined if there is no row found
    */
   protected getRowForMonth(year: number, month: number): number | undefined {
     let rowForCurrentMonth: number | undefined

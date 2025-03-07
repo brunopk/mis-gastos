@@ -8,10 +8,8 @@
  * `groupSpendsByDatesAndCategories` in Utils.ts
  * @param groupedReimbursements result of invoking `groupReimbursementsByDatesAndSubCategories` or
  * `groupReimbursementsByDatesAndCategories` in Utils.ts
- * @param data
- * data to validate
- * @param groupingElements categories or subcategories (see `groupRowsByDatesAndSubCategories` and
- * `groupRowsByDatesAndCategories` in Utils.ts)
+ * @param data data to validate
+ * @param groupingElements may be categories, subcategories or account names
  */
 function validateSheet(
   spreadSheetConfig: SpreadSheetConfig,
@@ -92,7 +90,7 @@ function validateSheet(
   const tips: string[] = []
   if (!validationPass) {
     tips.push("Check amounts for each category")
-    tips.push(`Check category/subcategory names are correct for all spends.`)
+    tips.push(`Check category/subcategory/account names are correct for all spends.`)
     tips.push(
       `Check if the first row in sheet '${sheetConfig.name}' within spreadsheet '${spreadSheetConfig.name}' contains valid category/subcategory names`
     )
@@ -101,7 +99,7 @@ function validateSheet(
 }
 
 /*************************************************************************************************************************/
-/*                                                         SHEETS                                                        */
+/*                                                    SHEET HANDLERS                                                     */
 /*************************************************************************************************************************/
 
 class AllCategories extends BaseSheetHandler {
@@ -118,7 +116,14 @@ class AllCategories extends BaseSheetHandler {
 
       addRow(this.spreadSheetConfig.id, this.sheetConfig.name, newRow)
     } else {
-      setValue(this.spreadSheetConfig.id, this.sheetConfig.name, rowForMonth, 1, formatDate(spend.date))
+      setValue(
+        this.spreadSheetConfig.name,
+        this.spreadSheetConfig.id,
+        this.sheetConfig.name,
+        rowForMonth,
+        1,
+        formatDate(spend.date)
+      )
 
       const currentCategoryValue = getValue(
         this.spreadSheetConfig.id,
@@ -127,6 +132,7 @@ class AllCategories extends BaseSheetHandler {
         categoryColumn
       )
       setValue(
+        this.spreadSheetConfig.name,
         this.spreadSheetConfig.id,
         this.sheetConfig.name,
         rowForMonth,
@@ -182,7 +188,14 @@ class Category extends BaseSheetHandler {
 
         addRow(this.spreadSheetConfig.id, this.sheetConfig.name, newRow)
       } else {
-        setValue(this.spreadSheetConfig.id, this.sheetConfig.name, rowForMonth, 1, formatDate(spend.date))
+        setValue(
+          this.spreadSheetConfig.name,
+          this.spreadSheetConfig.id,
+          this.sheetConfig.name,
+          rowForMonth,
+          1,
+          formatDate(spend.date)
+        )
 
         const currentSubcategoryTotal = getValue(
           this.spreadSheetConfig.id,
@@ -191,6 +204,7 @@ class Category extends BaseSheetHandler {
           subcategoryColumn
         )
         setValue(
+          this.spreadSheetConfig.name,
           this.spreadSheetConfig.id,
           this.sheetConfig.name,
           rowForMonth,
@@ -242,51 +256,61 @@ class Category extends BaseSheetHandler {
 
 /*************************************************************************************************************************/
 
-class Account extends BaseSheetHandler {
-  private account: string
+class Accounts extends BaseSheetHandler {
+  private availableAccounts: string[]
 
   constructor(spreadSheetConfig: SpreadSheetConfig, sheetConfig: SheetConfig) {
     super(spreadSheetConfig, sheetConfig)
-    this.account = sheetConfig.name
+    this.availableAccounts = this.getAvailableAccounts(sheetConfig)
   }
+
   processReimbursement(reimbursement: Spend): void {
-    if (reimbursement.account == this.account) {
+    if (this.availableAccounts.includes(reimbursement.account)) {
       super.processReimbursement(reimbursement)
     }
   }
 
   processSpend(spend: Spend) {
-    if (spend.account === this.sheetConfig.name) {
+    if (this.availableAccounts.includes(spend.account)) {
       const rowForMonth = this.getRowForMonth(spend.date.getFullYear(), spend.date.getMonth())
       const numberOfColumns = getNumberOfColumns(this.spreadSheetConfig.id, this.sheetConfig.name)
       const totalColumn = getTotalColumn(this.sheetConfig)
       if (!rowForMonth) {
         const newRow = Array(numberOfColumns).fill(0)
         newRow[0] = spend.date
-        newRow[this.sheetConfig.columns![spend.category] - 1] = spend.amount
+        newRow[this.sheetConfig.columns![spend.account] - 1] = spend.amount
         newRow[totalColumn - 1] = spend.amount
 
         addRow(this.spreadSheetConfig.id, this.sheetConfig.name, newRow)
       } else {
-        setValue(this.spreadSheetConfig.id, this.sheetConfig.name, rowForMonth, 1, formatDate(spend.date))
-
-        const columnForCategory = this.sheetConfig.columns![spend.category]
-        const currentCategoryAmount = getValue(
+        setValue(
+          this.spreadSheetConfig.name,
           this.spreadSheetConfig.id,
           this.sheetConfig.name,
           rowForMonth,
-          columnForCategory
+          1,
+          formatDate(spend.date)
+        )
+
+        const columnForAccount = this.sheetConfig.columns![spend.account]
+        const currentAccountAmount = getValue(
+          this.spreadSheetConfig.id,
+          this.sheetConfig.name,
+          rowForMonth,
+          columnForAccount
         )
         setValue(
+          this.spreadSheetConfig.name,
           this.spreadSheetConfig.id,
           this.sheetConfig.name,
           rowForMonth,
-          columnForCategory,
-          currentCategoryAmount + spend.amount
+          columnForAccount,
+          currentAccountAmount + spend.amount
         )
 
         const currentTotal = getValue(this.spreadSheetConfig.id, this.sheetConfig.name, rowForMonth, totalColumn)
         setValue(
+          this.spreadSheetConfig.name,
           this.spreadSheetConfig.id,
           this.sheetConfig.name,
           rowForMonth,
@@ -294,73 +318,95 @@ class Account extends BaseSheetHandler {
           currentTotal + spend.amount
         )
       }
+    } else {
+      console.info(
+        `Discarding spend ${JSON.stringify(spend)}, available accounts to process are ${JSON.stringify(
+          this.availableAccounts
+        )}`
+      )
     }
   }
 
   validate(): void {
     const currentSheetRows = readAllRows(this.spreadSheetConfig.id, this.sheetConfig.name)
-    const [headers, data] = [currentSheetRows?.slice(0, 1)[0], currentSheetRows?.slice(1)]
-
-    const categories = headers
-      ?.slice(1, headers.length - 1)
-      .filter((category) => category !== "Devolución" && category !== "Reimbursements")
+    const data = currentSheetRows?.slice(1)
 
     const dates = data?.map((row) => row[0])
 
     const allSpends = getAllSpends()
-    const groupedSpends = groupSpendsByDatesAndCategories(allSpends, dates!, this.sheetConfig.name, categories!)
+    const groupedSpends = groupSpendsByDatesAndAccounts(allSpends, dates!, this.availableAccounts)
 
     const allReimbursements = getAllReimbursements()
-    const groupedReimbursements = groupReimbursementsByDatesAndCategories(
+    const groupedReimbursements = groupReimbursementsByDatesAndAccounts(
       allReimbursements,
       dates!,
-      this.sheetConfig.name,
-      categories!
+      this.availableAccounts
     )
 
-    validateSheet(this.spreadSheetConfig, this.sheetConfig, groupedSpends, groupedReimbursements, data!, categories!)
+    validateSheet(
+      this.spreadSheetConfig,
+      this.sheetConfig,
+      groupedSpends,
+      groupedReimbursements,
+      data!,
+      this.availableAccounts
+    )
+  }
+
+  private getAvailableAccounts(sheetConfig: SheetConfig): string[] {
+    return Object.keys(sheetConfig.columns!).filter((columnName) => !SPECIAL_COLUMNS.includes(columnName))
   }
 }
 
 /*************************************************************************************************************************/
-/*                                                    SPREAD SHEET HANDLER                                               */
+/*                                                    MAIN CLASS                                                         */
 /*************************************************************************************************************************/
 
 class Monthly extends BaseSpreadSheetHandler {
   constructor(spreadSheetConfig: SpreadSheetConfig) {
     const sheetHandlers: BaseSheetHandler[] = []
+
     Object.keys(spreadSheetConfig.sheets).forEach((key) => {
       const sheetConfig = spreadSheetConfig.sheets[key]
+      const availableSheetClasses = Object.values(MonthlySheetClass)
       switch (sheetConfig.class) {
-        case "AllCategories":
+        case MonthlySheetClass.AllCategories:
           sheetHandlers.push(new AllCategories(spreadSheetConfig, sheetConfig))
           break
-        case "Category":
+
+        case MonthlySheetClass.Category:
           sheetHandlers.push(new Category(spreadSheetConfig, sheetConfig))
           break
-        case "Account":
-          sheetHandlers.push(new Account(spreadSheetConfig, sheetConfig))
-          break
+
+        case MonthlySheetClass.Accounts:
+            sheetHandlers.push(new Accounts(spreadSheetConfig, sheetConfig))
+            break
+
         default:
-          throw new Error(`Unknown sheet class "${sheetConfig.class}"`)
+          throw new Error(`Unknown sheet class "${sheetConfig.class}", available classes are: ${availableSheetClasses}`)
       }
     })
+
     super(spreadSheetConfig, sheetHandlers)
   }
 }
 
 Object.keys(spreadSheets).forEach((key) => {
   const spreadSheetConfig = spreadSheets[key]
+  const availableSpreadSheetClasses = Object.values(SpreadSheetClass)
+  
   switch (spreadSheetConfig.class) {
-    case "Monthly":
+    case SpreadSheetClass.Monthly:
       if (Object.keys(spreadSheets).includes(spreadSheetConfig.id))
         throw new Error(`Duplicated entry for spread sheet "${spreadSheetConfig.id}" in spreadSheetHandlers`)
       spreadSheetHandlers[spreadSheetConfig.id] = new Monthly(spreadSheetConfig)
       console.info(`Handler for spreadsheet '${spreadSheetConfig.name}' loaded correctly`)
       break
-    case "Main":
+    
+    case SpreadSheetClass.Main:
       break
+    
     default:
-      throw new Error(`Invalid spread sheet type '${spreadSheetConfig.class}'`)
+      throw new Error(`Invalid spread sheet class '${spreadSheetConfig.class}', available spread sheet classes are ${availableSpreadSheetClasses}`)
   }
 })
