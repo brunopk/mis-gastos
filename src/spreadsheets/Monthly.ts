@@ -99,7 +99,7 @@ function validateSheet(
 }
 
 /*************************************************************************************************************************/
-/*                                                         SHEETS                                                        */
+/*                                                    SHEET HANDLERS                                                     */
 /*************************************************************************************************************************/
 
 class AllCategories extends BaseSheetHandler {
@@ -265,7 +265,7 @@ class Accounts extends BaseSheetHandler {
   }
 
   processReimbursement(reimbursement: Spend): void {
-    if (reimbursement.account == this.account) {
+    if (this.availableAccounts.includes(reimbursement.account)) {
       super.processReimbursement(reimbursement)
     }
   }
@@ -359,7 +359,7 @@ class Accounts extends BaseSheetHandler {
 }
 
 /*************************************************************************************************************************/
-/*                                                    SPREAD SHEET HANDLER                                               */
+/*                                                    MAIN CLASS                                                         */
 /*************************************************************************************************************************/
 
 class Monthly extends BaseSpreadSheetHandler {
@@ -368,22 +368,22 @@ class Monthly extends BaseSpreadSheetHandler {
 
     Object.keys(spreadSheetConfig.sheets).forEach((key) => {
       const sheetConfig = spreadSheetConfig.sheets[key]
-
+      const availableSheetClasses = Object.values(MonthlySheetClass)
       switch (sheetConfig.class) {
-        case "AllCategories":
+        case MonthlySheetClass.AllCategories:
           sheetHandlers.push(new AllCategories(spreadSheetConfig, sheetConfig))
           break
 
-        case "Category":
+        case MonthlySheetClass.Category:
           sheetHandlers.push(new Category(spreadSheetConfig, sheetConfig))
           break
 
-        case "Accounts":
-          sheetHandlers.push(new Accounts(spreadSheetConfig, sheetConfig))
-          break
+        case MonthlySheetClass.Accounts:
+            sheetHandlers.push(new Accounts(spreadSheetConfig, sheetConfig))
+            break
 
         default:
-          throw new Error(`Unknown sheet class "${sheetConfig.class}"`)
+          throw new Error(`Unknown sheet class "${sheetConfig.class}", available classes are: ${availableSheetClasses}`)
       }
     })
 
@@ -393,16 +393,20 @@ class Monthly extends BaseSpreadSheetHandler {
 
 Object.keys(spreadSheets).forEach((key) => {
   const spreadSheetConfig = spreadSheets[key]
+  const availableSpreadSheetClasses = Object.values(SpreadSheetClass)
+  
   switch (spreadSheetConfig.class) {
-    case "Monthly":
+    case SpreadSheetClass.Monthly:
       if (Object.keys(spreadSheets).includes(spreadSheetConfig.id))
         throw new Error(`Duplicated entry for spread sheet "${spreadSheetConfig.id}" in spreadSheetHandlers`)
       spreadSheetHandlers[spreadSheetConfig.id] = new Monthly(spreadSheetConfig)
       console.info(`Handler for spreadsheet '${spreadSheetConfig.name}' loaded correctly`)
       break
-    case "Main":
+    
+    case SpreadSheetClass.Main:
       break
+    
     default:
-      throw new Error(`Invalid spread sheet type '${spreadSheetConfig.class}'`)
+      throw new Error(`Invalid spread sheet class '${spreadSheetConfig.class}', available spread sheet classes are ${availableSpreadSheetClasses}`)
   }
 })

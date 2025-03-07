@@ -35,16 +35,18 @@ type CategoryConfig = {
   readonly subCategories?: { [name: string]: SubCategoryConfig }
 }
 
+type SheetClass = MonthlySheetClass | MainSheetClass
+
 type SheetConfig = {
   readonly name: string
-  readonly class: string
+  readonly class: SheetClass
   readonly columns?: { [name: string]: number }
 }
 
 type SpreadSheetConfig = {
   readonly id: string
   readonly name: string
-  readonly class: string
+  readonly class: SpreadSheetClass
   readonly sheets: { [name: string]: SheetConfig }
 }
 

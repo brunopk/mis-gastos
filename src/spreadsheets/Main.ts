@@ -56,16 +56,18 @@ class Main extends BaseSpreadSheetHandler {
 
 Object.keys(spreadSheets).forEach((key) => {
   const spreadSheetConfig = spreadSheets[key]
+  const availableSpreadSheetClasses = Object.values(SpreadSheetClass)
+
   switch (spreadSheetConfig.class) {
-    case "Monthly":
+    case SpreadSheetClass.Monthly:
       break
-    case "Main":
+    case SpreadSheetClass.Main:
       if (Object.keys(spreadSheets).includes(spreadSheetConfig.id))
         throw new Error(`Duplicated entry for spread sheet "${spreadSheetConfig.id}" in spreadSheetHandlers`)
       spreadSheetHandlers[spreadSheetConfig.id] = new Main(spreadSheetConfig)
       console.info(`Handler for spreadsheet '${spreadSheetConfig.name}' loaded correctly`)
       break
     default:
-      throw new Error(`Invalid spread sheet type '${spreadSheetConfig.class}'`)
+      throw new Error(`Invalid spread sheet class '${spreadSheetConfig.class}', available spread sheet classes are ${availableSpreadSheetClasses}`)
   }
 })
